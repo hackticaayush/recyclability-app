@@ -1,0 +1,81 @@
+name: Folder Guard
+on: 
+  push:
+    branches: [ main, master, develop ]  # Specify branches to protect
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch full history to compare changes
+          
+      - name: Check folder permissions
+        run: |
+          USER="${{ github.actor }}"
+          EVENT_NAME="${{ github.event_name }}"
+          
+          echo "User: $USER"
+          echo "Event: $EVENT_NAME"
+          
+          # Get list of changed files based on event type
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            # For pull requests, compare against base branch
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+            git diff --name-only $BASE_SHA...$HEAD_SHA > changed_files.txt
+          else
+            # For push events, compare with previous commit
+            if [ "${{ github.event.before }}" = "0000000000000000000000000000000000000000" ]; then
+              # First commit or new branch
+              git diff --name-only HEAD~1 HEAD > changed_files.txt 2>/dev/null || git ls-tree --name-only -r HEAD > changed_files.txt
+            else
+              git diff --name-only ${{ github.event.before }} ${{ github.sha }} > changed_files.txt
+            fi
+          fi
+          
+          echo "Changed files:"
+          cat changed_files.txt
+          
+          # Check if any files were changed
+          if [ ! -s changed_files.txt ]; then
+            echo "No files changed, skipping checks"
+            exit 0
+          fi
+          
+          # Check for frontend folder changes
+          FRONTEND_CHANGES=$(grep "^frontend/" changed_files.txt || true)
+          NON_FRONTEND_CHANGES=$(grep -v "^frontend/" changed_files.txt || true)
+          
+          echo "Frontend changes: $FRONTEND_CHANGES"
+          echo "Non-frontend changes: $NON_FRONTEND_CHANGES"
+          
+          # Rule 1: Only Deeptanu-Dhar can modify frontend/*
+          if [ -n "$FRONTEND_CHANGES" ] && [ "$USER" != "Deeptanu-Dhar" ]; then
+            echo "❌ Error: Only @Deeptanu-Dhar can modify frontend/ folder"
+            echo "User '$USER' attempted to modify:"
+            echo "$FRONTEND_CHANGES"
+            exit 1
+          fi
+          
+          # Rule 2: hackticaayush cannot modify frontend/* (redundant with rule 1, but kept for clarity)
+          if [ -n "$FRONTEND_CHANGES" ] && [ "$USER" = "hackticaayush" ]; then
+            echo "❌ Error: @hackticaayush cannot modify frontend/ folder"
+            echo "Attempted to modify:"
+            echo "$FRONTEND_CHANGES"
+            exit 1
+          fi
+          
+          # Rule 3: Deeptanu-Dhar can only modify frontend/*
+          if [ -n "$NON_FRONTEND_CHANGES" ] && [ "$USER" = "Deeptanu-Dhar" ]; then
+            echo "❌ Error: @Deeptanu-Dhar can only modify frontend/ folder"
+            echo "Attempted to modify non-frontend files:"
+            echo "$NON_FRONTEND_CHANGES"
+            exit 1
+          fi
+          
+          echo "✅ All folder permission checks passed"
