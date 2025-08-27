@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pkl
+
+# Virtual environments
+venv/
+.env/
+.env.*
+*.venv/
+
+# Node / Frontend
+node_modules/
+dist/
+build/
+
+# Environment variables
+*.env
+.env.*
+!*.env.example   # keep example env files
+
+# Database
+*.sqlite3
+*.db
+
+# System files
+.DS_Store
+Thumbs.db
