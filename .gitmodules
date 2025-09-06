@@ -1,0 +1,3 @@
+[submodule "backend/modules/livcheck"]
+	path = backend/modules/livcheck
+	url = https://github.com/hackticaayush/livcheck.git
