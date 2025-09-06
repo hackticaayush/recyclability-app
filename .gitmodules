@@ -1,3 +1,0 @@
-[submodule "backend/modules"]
-	path = backend/modules
-	url = https://github.com/hackticaayush/livcheck.git
